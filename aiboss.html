@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI BOSS - 接单赚钱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #F0EDE8;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #app {
+            width: 100%; max-width: 390px; height: 100vh;
+            margin: 0 auto; background: #F0EDE8;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        .page {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s;
+            will-change: transform, opacity;
+        }
+        .page.hidden-right { transform: translateX(100%); opacity: 0; pointer-events: none; }
+        .page.hidden-left  { transform: translateX(-60%); opacity: 0; pointer-events: none; }
+        .page.active       { transform: translateX(0); opacity: 1; }
+
+        .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .scroll-area::-webkit-scrollbar { display: none; }
+
+        #tabBar, .tab-bar-shared {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid #E8E4DE;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            flex-shrink: 0; z-index: 100;
+        }
+
+        .status-bar {
+            height: 36px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; flex-shrink: 0;
+        }
+
+        .nav-bar {
+            height: 52px;
+            display: flex; align-items: center;
+            padding: 0 16px; flex-shrink: 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid rgba(0,0,0,0.05);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+
+        /* ═══════════ ICON SYSTEM ═══════════ */
+        .ic {
+            display: inline-block; vertical-align: middle;
+            stroke: currentColor; fill: none;
+            stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+        .ic-fill { fill: currentColor; stroke: none; }
+
+        /* ═══════════ HERO SECTION ═══════════ */
+        .hero {
+            position: relative;
+            height: 280px;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: linear-gradient(180deg, #F0EDE8 0%, #F0EDE8 70%, rgba(240,237,232,0) 100%);
+        }
+        .hero-bg {
+            position: absolute; inset: 0;
+            color: #78716c;
+            opacity: 0.10;
+            filter: blur(0.4px);
+            pointer-events: none;
+        }
+        .hero-content {
+            position: relative; z-index: 10;
+            height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 16px 24px 0;
+        }
+        .hero-avatar-container {
+            position: relative;
+            width: 124px; height: 124px;
+            margin-bottom: 14px;
+        }
+        .hero-ring {
+            position: absolute; inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fafaf9 0%, #e7e5e4 100%);
+            border: 1.5px dashed rgba(120, 113, 108, 0.35);
+            box-shadow: inset 0 -8px 24px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08);
+        }
+        .hero-char {
+            position: absolute;
+            top: -32px;
+            left: 50%;
+            width: 130px;
+            height: 160px;
+            animation: heroFloat 4.5s ease-in-out infinite;
+            transform-origin: bottom center;
+        }
+        @keyframes heroFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0) rotate(-2deg); }
+            50%      { transform: translateX(-50%) translateY(-7px) rotate(2deg); }
+        }
+        .hero-eyes { animation: heroBlink 4.8s infinite; transform-origin: 60px 52px; }
+        @keyframes heroBlink {
+            0%, 92%, 100% { transform: scaleY(1); }
+            95%, 98%      { transform: scaleY(0.08); }
+        }
+        .hero-antenna-glow { animation: pulseGlow 2.4s ease-in-out infinite; transform-origin: center; }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.25; r: 6; }
+            50%      { opacity: 0.55; r: 8; }
+        }
+
+        .hero-title {
+            font-size: 26px; font-weight: 900;
+            letter-spacing: 0.08em;
+            color: #1c1917;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        .hero-subtitle {
+            font-size: 12px; font-weight: 600;
+            color: #78716c;
+            letter-spacing: 0.04em;
+            margin-bottom: 10px;
+        }
+        .hero-stat {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(120,113,108,0.15);
+            border-radius: 99px;
+            font-size: 11px; color: #57534e;
+            backdrop-filter: blur(8px);
+        }
+        .hero-stat-num {
+            font-weight: 900; color: #1c1917;
+            font-variant-numeric: tabular-nums;
+        }
+        .hero-stat-dot {
+            width: 6px; height: 6px;
+            background: #10b981; border-radius: 50%;
+            box-shadow: 0 0 6px #10b981;
+            animation: heroPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes heroPulse {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50%     { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .hero-toggle {
+            position: absolute;
+            top: 8px; right: 16px;
+            z-index: 20;
+            font-size: 10px; font-weight: 700;
+            color: #78716c;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(120,113,108,0.15);
+            padding: 5px 10px;
+            border-radius: 99px;
+            backdrop-filter: blur(8px);
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+
+        /* ═══════════ OFFICE BG ANIMS ═══════════ */
+        .ws { transform-origin: center; animation: wsBob 3s ease-in-out infinite; }
+        .ws:nth-child(2n)  { animation-delay: 0.4s; animation-duration: 3.4s; }
+        .ws:nth-child(3n)  { animation-delay: 0.9s; animation-duration: 2.7s; }
+        .ws:nth-child(4n)  { animation-delay: 1.3s; animation-duration: 3.1s; }
+        @keyframes wsBob {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-1.2px); }
+        }
+        .walker { animation: walkAcross 28s linear infinite; }
+        .walker-2 { animation: walkAcross 36s linear infinite; animation-delay: -14s; }
+        @keyframes walkAcross {
+            0%   { transform: translateX(-20px); }
+            100% { transform: translateX(420px); }
+        }
+        .walker-legs { animation: walkLegs 0.6s ease-in-out infinite; transform-origin: top; }
+        @keyframes walkLegs {
+            0%, 100% { transform: rotate(0deg); }
+            50%      { transform: rotate(2deg); }
+        }
+
+        /* ═══════════ ANIMATIONS ═══════════ */
+        @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+        @keyframes popIn   { 0% { opacity:0; transform:scale(0.85) translateY(20px); } 100% { opacity:1; transform:scale(1) translateY(0); } }
+        .bubble  { animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+        .fade-in { animation: fadeIn 0.3s ease both; }
+        .pop-in  { animation: popIn 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+
+        .chat-ai   { background: white; border: 1px solid #F0EDE8; border-radius: 4px 18px 18px 18px; }
+        .chat-user { background: #1A1A1A; border-radius: 18px 4px 18px 18px; }
+
+        .dot-bounce { animation: bounce 1.2s infinite; }
+        .dot-bounce:nth-child(2) { animation-delay: 0.15s; }
+        .dot-bounce:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes bounce {
+            0%,60%,100% { transform:translateY(0); }
+            30%         { transform:translateY(-5px); }
+        }
+        .progress-fill { transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
+
+        #sheet-overlay {
+            position: fixed; inset:0; background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(4px);
+            z-index:200; opacity:0; pointer-events:none;
+            transition: opacity 0.3s;
+        }
+        #sheet-overlay.show { opacity:1; pointer-events:auto; }
+        #sheet-panel {
+            position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(100%);
+            width:100%; max-width:390px;
+            background:#F7F5F1; border-radius:28px 28px 0 0;
+            z-index:201; transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+            padding-bottom: env(safe-area-inset-bottom,16px);
+        }
+        #sheet-panel.show { transform:translateX(-50%) translateY(0); }
+
+        #toast {
+            position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+            background:#1A1A1A; color:white; font-size:12px; font-weight:600;
+            padding:10px 18px; border-radius:50px; white-space:nowrap;
+            z-index:999; opacity:0; pointer-events:none;
+            transition: opacity 0.3s, bottom 0.3s;
+            display:inline-flex; align-items:center; gap:8px;
+        }
+        #toast.show { opacity:1; bottom:110px; }
+
+        .tag {
+            display:inline-flex; align-items:center; gap:3px;
+            border-radius:99px; font-size:10px; font-weight:700; padding:3px 8px;
+        }
+        .step-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+        * { scrollbar-width: none; }
+
+        button { cursor:pointer; transition: transform 0.1s, background 0.15s; }
+        button:active { transform:scale(0.96); }
+
+        html { overflow: hidden; }
+
+        .section-label {
+            font-size:11px; font-weight:800; color:#9CA3AF;
+            letter-spacing:0.08em; text-transform:uppercase;
+        }
+        .review-badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:99px; display:inline-flex; align-items:center; gap:3px; }
+
+        /* Tab bar bottom */
+        .tab-btn { display:flex; flex-direction:column; align-items:center; gap:3px; padding: 4px 20px; }
+        .tab-btn-label { font-size:10px; font-weight:500; color:#9ca3af; }
+        .tab-btn.active-tab .tab-btn-label { font-weight:800; color:#1c1917; }
+        .tab-btn-icon { color:#9ca3af; }
+        .tab-btn.active-tab .tab-btn-icon { color:#1c1917; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════ SVG ICON LIBRARY (hand-drawn, monochrome) ═══════════ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <defs>
+        <!-- Tab bar icons -->
+        <symbol id="ic-chat" viewBox="0 0 24 24">
+            <path d="M4.2 6 Q4 4.2 5.8 4.1 L18.5 4.1 Q20 4.3 20 6 L20 14.5 Q20 16 18.4 16.1 L9.2 16.1 L5.8 19.4 L6.4 16.1 L5.4 16 Q4.2 15.7 4.2 14.4 Z"/>
+            <circle cx="9" cy="10" r="0.8" class="ic-fill" stroke="none"/>
+            <circle cx="12.2" cy="10" r="0.8" class="ic-fill" stroke="none"/>
+            <circle cx="15.4" cy="10" r="0.8" class="ic-fill" stroke="none"/>
+        </symbol>
+        <symbol id="ic-tasks" viewBox="0 0 24 24">
+            <rect x="4.5" y="5.4" width="15.2" height="14.6" rx="2.4"/>
+            <path d="M9 3.4 L15 3.4 Q15.6 3.4 15.6 4 L15.6 6.2 L8.5 6.2 L8.5 4 Q8.5 3.4 9 3.4 Z"/>
+            <path d="M8.2 11.4 L10.2 13.4 L14.2 9.4"/>
+            <path d="M8.4 16.4 L14.8 16.4"/>
+        </symbol>
+        <symbol id="ic-orders" viewBox="0 0 24 24">
+            <path d="M3.5 8 L12 4 L20.5 8 L20.5 17 L12 21 L3.5 17 Z"/>
+            <path d="M3.5 8 L12 12 L20.5 8"/>
+            <path d="M12 12 L12 20.6"/>
+            <path d="M7.7 6 L16.3 10" />
+        </symbol>
+        <symbol id="ic-user" viewBox="0 0 24 24">
+            <circle cx="12" cy="8.2" r="3.8"/>
+            <path d="M4.6 20 Q5.2 13.6 12 13.6 Q18.8 13.6 19.4 20"/>
+        </symbol>
+
+        <!-- Status bar -->
+        <symbol id="ic-signal" viewBox="0 0 24 24">
+            <path d="M3 17 L3 19" />
+            <path d="M8 14 L8 19" />
+            <path d="M13 10 L13 19" />
+            <path d="M18 5 L18 19" />
+        </symbol>
+        <symbol id="ic-battery" viewBox="0 0 24 24">
+            <rect x="2" y="8" width="17" height="9" rx="1.6"/>
+            <path d="M21 11 L21 14"/>
+            <rect x="4" y="10" width="13" height="5" rx="0.6" class="ic-fill" stroke="none"/>
+        </symbol>
+
+        <!-- Money / actions -->
+        <symbol id="ic-yuan" viewBox="0 0 24 24">
+            <path d="M6.5 6 L12 12 L17.5 6"/>
+            <path d="M12 12 L12 18.5"/>
+            <path d="M8 14.4 L16 14.4"/>
+            <path d="M8 17.2 L16 17.2"/>
+        </symbol>
+        <symbol id="ic-zap" viewBox="0 0 24 24">
+            <path d="M13.4 2.6 L4.6 13.4 L11 13.4 L10.6 21.4 L19.4 10.6 L13 10.6 Z"/>
+        </symbol>
+        <symbol id="ic-eye" viewBox="0 0 24 24">
+            <path d="M2.6 12 Q6.4 5.4 12 5.4 Q17.6 5.4 21.4 12 Q17.6 18.6 12 18.6 Q6.4 18.6 2.6 12 Z"/>
+            <circle cx="12" cy="12" r="2.6"/>
+        </symbol>
+        <symbol id="ic-wave" viewBox="0 0 24 24">
+            <path d="M7.4 13.4 Q7 9.2 9.2 7 Q11.4 4.8 13.4 7 L17.4 11 Q19.2 12.8 17.4 14.6 L14 18 Q12 20 10 18 L7.4 15.4 Q7.4 14.2 7.4 13.4 Z"/>
+            <path d="M10 11 L10 6.4" />
+            <path d="M12.6 10.4 L12.6 5.4" />
+            <path d="M15 11 L15 7" />
+        </symbol>
+
+        <!-- Refresh / actions -->
+        <symbol id="ic-refresh" viewBox="0 0 24 24">
+            <path d="M4 9 Q6.4 4.6 12 4.6 Q17.4 4.6 19.4 9.4"/>
+            <path d="M16 9.4 L20 9 L19.4 5"/>
+            <path d="M20 15 Q17.6 19.4 12 19.4 Q6.6 19.4 4.6 14.6"/>
+            <path d="M8 14.6 L4 15 L4.6 19"/>
+        </symbol>
+        <symbol id="ic-chevron-right" viewBox="0 0 24 24">
+            <path d="M9.4 5.4 L15.6 12 L9.4 18.6"/>
+        </symbol>
+        <symbol id="ic-plus" viewBox="0 0 24 24">
+            <path d="M12 5 L12 19"/>
+            <path d="M5 12 L19 12"/>
+        </symbol>
+        <symbol id="ic-check" viewBox="0 0 24 24">
+            <path d="M4.4 12.8 L9.6 18 L19.6 6.4"/>
+        </symbol>
+        <symbol id="ic-x" viewBox="0 0 24 24">
+            <path d="M5.4 5.4 L18.6 18.6"/>
+            <path d="M18.6 5.4 L5.4 18.6"/>
+        </symbol>
+
+        <!-- Categories -->
+        <symbol id="ic-phone" viewBox="0 0 24 24">
+            <rect x="6.4" y="2.4" width="11.2" height="19.2" rx="2.4"/>
+            <path d="M10.4 18.4 L13.6 18.4"/>
+            <path d="M9 5.4 L15 5.4" />
+        </symbol>
+        <symbol id="ic-pen" viewBox="0 0 24 24">
+            <path d="M14.4 4.6 L19.4 9.6 L8 21 L3 21 L3 16 Z"/>
+            <path d="M13 6 L18 11"/>
+        </symbol>
+        <symbol id="ic-star" viewBox="0 0 24 24">
+            <path d="M12 3 L14.6 9 L21 9.8 L16.2 14.2 L17.6 20.6 L12 17.2 L6.4 20.6 L7.8 14.2 L3 9.8 L9.4 9 Z"/>
+        </symbol>
+        <symbol id="ic-tag" viewBox="0 0 24 24">
+            <path d="M3.4 12.6 L11.4 4.6 L20.4 5 L20.8 14 L12.8 22 Z"/>
+            <circle cx="15.8" cy="9.4" r="1.4"/>
+        </symbol>
+
+        <!-- Onboard / misc -->
+        <symbol id="ic-sun" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2.4 L12 4.6" />
+            <path d="M12 19.4 L12 21.6" />
+            <path d="M4.6 4.6 L6.2 6.2" />
+            <path d="M17.8 17.8 L19.4 19.4" />
+            <path d="M2.4 12 L4.6 12" />
+            <path d="M19.4 12 L21.6 12" />
+            <path d="M4.6 19.4 L6.2 17.8" />
+            <path d="M17.8 6.2 L19.4 4.6" />
+        </symbol>
+        <symbol id="ic-moon" viewBox="0 0 24 24">
+            <path d="M20.4 14.2 Q17.8 17.8 13.2 17.8 Q6.6 17.8 6.6 11.2 Q6.6 6.6 10.2 4 Q9.4 8.2 11.6 11.4 Q14.4 14.6 20.4 14.2 Z"/>
+        </symbol>
+        <symbol id="ic-bus" viewBox="0 0 24 24">
+            <rect x="4.4" y="4.4" width="15.2" height="13.2" rx="2.4"/>
+            <path d="M4.4 11.4 L19.6 11.4"/>
+            <circle cx="8" cy="20" r="1.4"/>
+            <circle cx="16" cy="20" r="1.4"/>
+            <path d="M6.4 17.6 L6.4 19.4" />
+            <path d="M17.6 17.6 L17.6 19.4" />
+        </symbol>
+        <symbol id="ic-image" viewBox="0 0 24 24">
+            <rect x="3.4" y="4.4" width="17.2" height="15.2" rx="2.4"/>
+            <circle cx="8.6" cy="10" r="1.6"/>
+            <path d="M3.6 17.4 L9 12.4 L13 16 L16.6 12.4 L20.4 16.4"/>
+        </symbol>
+        <symbol id="ic-smile" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9.4"/>
+            <path d="M8 14.4 Q10.2 16.6 12 16.6 Q13.8 16.6 16 14.4"/>
+            <circle cx="9" cy="9.8" r="0.8" class="ic-fill" stroke="none"/>
+            <circle cx="15" cy="9.8" r="0.8" class="ic-fill" stroke="none"/>
+        </symbol>
+
+        <!-- Camera / proof / submit -->
+        <symbol id="ic-camera" viewBox="0 0 24 24">
+            <path d="M3.4 7.4 L7 7.4 L8.4 5 L15.6 5 L17 7.4 L20.6 7.4 Q21 7.4 21 8 L21 18 Q21 19 19.8 19 L4.2 19 Q3 19 3 18 L3 8 Q3 7.4 3.4 7.4 Z"/>
+            <circle cx="12" cy="13" r="3.4"/>
+            <circle cx="17.4" cy="10" r="0.5" class="ic-fill" stroke="none"/>
+        </symbol>
+        <symbol id="ic-text-cursor" viewBox="0 0 24 24">
+            <path d="M9 4.6 L9 19.4"/>
+            <path d="M6 4.6 L12 4.6" />
+            <path d="M6 19.4 L12 19.4" />
+            <path d="M13 8 L19 8" />
+            <path d="M13 12 L19 12" />
+            <path d="M13 16 L17 16" />
+        </symbol>
+        <symbol id="ic-tap" viewBox="0 0 24 24">
+            <path d="M9 11 L9 5.6 Q9 4 10.4 4 Q11.8 4 11.8 5.6 L11.8 12.4 L13.4 11.6 Q15 11.2 16.4 12.4 L19.4 15.4 Q20 16 19.4 17 L17.4 20.6 Q17 21.4 16 21.4 L11.4 21.4 Q10.2 21.4 9.4 20.4 L6.4 16 Q5.8 15 6.6 14 L8.2 12.6 Q8.6 12.2 9 11 Z"/>
+        </symbol>
+        <symbol id="ic-send" viewBox="0 0 24 24">
+            <path d="M3.4 12 L20.6 4 L17 21 L11 14 Z"/>
+            <path d="M11 14 L17 8.4"/>
+        </symbol>
+        <symbol id="ic-sparkle" viewBox="0 0 24 24">
+            <path d="M12 3 L13.4 9.4 L20 11 L13.4 12.6 L12 19 L10.6 12.6 L4 11 L10.6 9.4 Z"/>
+            <path d="M19 4.4 L19.6 6 L21 6.6 L19.6 7 L19 8.6 L18.4 7 L17 6.6 L18.4 6 Z" class="ic-fill" stroke="none"/>
+            <path d="M5 16 L5.6 17.6 L7 18 L5.6 18.4 L5 20 L4.4 18.4 L3 18 L4.4 17.6 Z" class="ic-fill" stroke="none"/>
+        </symbol>
+
+        <!-- Profile / publisher -->
+        <symbol id="ic-card" viewBox="0 0 24 24">
+            <rect x="2.6" y="5.4" width="18.8" height="13.2" rx="2.4"/>
+            <path d="M2.6 10 L21.4 10"/>
+            <path d="M6 14.6 L10 14.6"/>
+        </symbol>
+        <symbol id="ic-bank" viewBox="0 0 24 24">
+            <path d="M3 9 L12 3.4 L21 9 L21 10.4 L3 10.4 Z"/>
+            <path d="M5.4 10.4 L5.4 17.4" />
+            <path d="M9.4 10.4 L9.4 17.4" />
+            <path d="M14.6 10.4 L14.6 17.4" />
+            <path d="M18.6 10.4 L18.6 17.4" />
+            <path d="M3 19.4 L21 19.4"/>
+        </symbol>
+        <symbol id="ic-megaphone" viewBox="0 0 24 24">
+            <path d="M3 10 L3 14 Q3 14.6 3.6 14.6 L8 14.6 L18 19.4 L18 4.6 L8 9.4 L3.6 9.4 Q3 9.4 3 10 Z"/>
+            <path d="M21 10 L21 14"/>
+            <path d="M8 14.6 L8 9.4"/>
+        </symbol>
+        <symbol id="ic-question" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9.4"/>
+            <path d="M9 9.4 Q9 6.6 12 6.6 Q15 6.6 15 9.4 Q15 11.6 12 12.4 L12 14"/>
+            <circle cx="12" cy="17.4" r="0.8" class="ic-fill" stroke="none"/>
+        </symbol>
+        <symbol id="ic-bulb" viewBox="0 0 24 24">
+            <path d="M9 17.4 Q4.6 14.6 6.4 9.4 Q8.4 4.6 12 5 Q15.6 4.6 17.6 9.4 Q19.4 14.6 15 17.4 Z"/>
+            <path d="M9 17.4 L15 17.4 L15 19.4 L9 19.4 Z"/>
+            <path d="M10.4 21.4 L13.6 21.4"/>
+        </symbol>
+        <symbol id="ic-warning" viewBox="0 0 24 24">
+            <path d="M12 3.4 L21.4 19.4 L2.6 19.4 Z"/>
+            <path d="M12 10 L12 14"/>
+            <circle cx="12" cy="16.6" r="0.8" class="ic-fill" stroke="none"/>
+        </symbol>
+        <symbol id="ic-inbox-empty" viewBox="0 0 24 24">
+            <path d="M3.4 13 L7 6.4 L17 6.4 L20.6 13 L20.6 18.6 L3.4 18.6 Z"/>
+            <path d="M3.4 13 L8.4 13 Q9 14.6 12 14.6 Q15 14.6 15.6 13 L20.6 13"/>
+        </symbol>
+        <symbol id="ic-pause" viewBox="0 0 24 24">
+            <path d="M9 5.4 L9 18.6"/>
+            <path d="M15 5.4 L15 18.6"/>
+        </symbol>
+        <symbol id="ic-download-tray" viewBox="0 0 24 24">
+            <path d="M3.4 14.6 L3.4 19.4 L20.6 19.4 L20.6 14.6"/>
+            <path d="M12 4 L12 15"/>
+            <path d="M6.6 9.4 L12 15 L17.4 9.4"/>
+        </symbol>
+        <symbol id="ic-rocket" viewBox="0 0 24 24">
+            <path d="M14 4 Q18.6 5.4 19.4 10 Q20 14.6 16 19 L12 21 L11 17 Q4.6 13 4.6 13 L8 12 Q9.4 7.4 14 4 Z"/>
+            <circle cx="14" cy="10" r="1.8"/>
+            <path d="M6.4 19 Q7.4 17 9 16.4"/>
+        </symbol>
+        <symbol id="ic-shield-check" viewBox="0 0 24 24">
+            <path d="M12 3 L19.4 6 Q19.4 14.6 12 21 Q4.6 14.6 4.6 6 Z"/>
+            <path d="M8.4 12 L11 14.6 L15.6 9.4"/>
+        </symbol>
+
+        <!-- Hero AI BOSS character (3D-ish low-poly cartoon) -->
+        <symbol id="ic-aiboss-char" viewBox="0 0 120 160">
+            <defs>
+                <linearGradient id="suitGrad" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#2a2a2a"/>
+                    <stop offset="100%" stop-color="#0d0d0d"/>
+                </linearGradient>
+                <linearGradient id="headGrad" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#fafaf9"/>
+                    <stop offset="100%" stop-color="#d6d3d1"/>
+                </linearGradient>
+                <linearGradient id="headShade" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stop-color="#fafaf9" stop-opacity="0"/>
+                    <stop offset="100%" stop-color="#78716c" stop-opacity="0.35"/>
+                </linearGradient>
+                <radialGradient id="cheekGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#fda4af" stop-opacity="0.6"/>
+                    <stop offset="100%" stop-color="#fda4af" stop-opacity="0"/>
+                </radialGradient>
+            </defs>
+
+            <!-- Antenna glow -->
+            <circle class="hero-antenna-glow" cx="60" cy="6" r="6" fill="#10b981" opacity="0.3"/>
+            <!-- Antenna -->
+            <path d="M60 18 L60 6" stroke="#0a0a0a" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+            <circle cx="60" cy="5" r="3.6" fill="#10b981" stroke="#0a0a0a" stroke-width="2"/>
+
+            <!-- Body / suit -->
+            <path d="M26 100 Q30 84 42 82 L78 82 Q90 84 94 100 L98 150 L22 150 Z"
+                  fill="url(#suitGrad)" stroke="#0a0a0a" stroke-width="2.4" stroke-linejoin="round"/>
+            <!-- Suit right shadow (low-poly face) -->
+            <path d="M60 82 L78 82 Q90 84 94 100 L98 150 L60 150 Z" fill="#000" opacity="0.22"/>
+            <!-- Collar V -->
+            <path d="M47 82 L60 98 L73 82" fill="#fafafa" stroke="#0a0a0a" stroke-width="2.2" stroke-linejoin="round"/>
+            <!-- Bow tie -->
+            <path d="M50 95 L60 99 L70 95 L67 106 L60 102 L53 106 Z"
+                  fill="#10b981" stroke="#0a0a0a" stroke-width="1.6" stroke-linejoin="round"/>
+            <circle cx="60" cy="100.4" r="1.5" fill="#0a0a0a"/>
+            <!-- Pocket detail -->
+            <path d="M35 116 L46 116" stroke="#ffffff" stroke-width="1.4" opacity="0.35"/>
+
+            <!-- Head -->
+            <ellipse cx="60" cy="50" rx="34" ry="36" fill="url(#headGrad)" stroke="#0a0a0a" stroke-width="2.6"/>
+            <!-- Right side shadow -->
+            <path d="M60 14 Q90 18 94 50 Q92 80 60 86 Z" fill="url(#headShade)"/>
+            <!-- Highlight -->
+            <ellipse cx="46" cy="32" rx="11" ry="6" fill="#ffffff" opacity="0.55" transform="rotate(-22 46 32)"/>
+
+            <!-- Cheeks -->
+            <circle cx="34" cy="60" r="6.5" fill="url(#cheekGrad)"/>
+            <circle cx="86" cy="60" r="6.5" fill="url(#cheekGrad)"/>
+
+            <!-- Eyes (blinking) -->
+            <g class="hero-eyes">
+                <rect x="43" y="46" width="10" height="13" rx="2.2" fill="#0a0a0a"/>
+                <rect x="67" y="46" width="10" height="13" rx="2.2" fill="#0a0a0a"/>
+                <circle cx="49.5" cy="50" r="2" fill="#10b981"/>
+                <circle cx="73.5" cy="50" r="2" fill="#10b981"/>
+                <circle cx="51" cy="48.5" r="0.9" fill="#ffffff"/>
+                <circle cx="75" cy="48.5" r="0.9" fill="#ffffff"/>
+            </g>
+
+            <!-- Mouth -->
+            <path d="M51 68 Q60 73 69 68" fill="none" stroke="#0a0a0a" stroke-width="2.4" stroke-linecap="round"/>
+
+            <!-- Headphone band hint (boss style) -->
+            <path d="M28 50 Q28 28 60 28 Q92 28 92 50" fill="none" stroke="#0a0a0a" stroke-width="2.4" opacity="0.15"/>
+
+            <!-- Floor shadow -->
+            <ellipse cx="60" cy="155" rx="32" ry="3.5" fill="#000" opacity="0.1"/>
+        </symbol>
+
+        <!-- Hero office background -->
+        <symbol id="ic-workstation" viewBox="0 0 36 36">
+            <!-- Desk -->
+            <rect x="2" y="22" width="32" height="3.2" rx="1.2" fill="currentColor" opacity="0.7"/>
+            <line x1="6" y1="25" x2="6" y2="32" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <line x1="30" y1="25" x2="30" y2="32" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <!-- Monitor -->
+            <rect x="8" y="8" width="14" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <line x1="13" y1="18" x2="13" y2="22" stroke="currentColor" stroke-width="1.2"/>
+            <!-- Worker -->
+            <circle cx="26" cy="15" r="3.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M21.5 24 Q21.5 18.4 26 18.4 Q30.5 18.4 30.5 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="ic-walker" viewBox="0 0 14 26">
+            <circle cx="7" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <line x1="7" y1="8" x2="7" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <g class="walker-legs">
+                <line x1="7" y1="17" x2="3.5" y2="24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <line x1="7" y1="17" x2="10.5" y2="24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </g>
+            <line x1="7" y1="11" x2="3.5" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <line x1="7" y1="11" x2="10.5" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </symbol>
+    </defs>
+</svg>
+
+
+<div id="app">
+
+    <!-- ════════════════════════════════════════════
+         PAGE 0: CHAT (with new HERO)
+    ═════════════════════════════════════════════ -->
+    <div id="page-chat" class="page active bg-[#F0EDE8]">
+
+        <!-- Status bar -->
+        <div class="status-bar">
+            <span class="text-xs font-bold text-stone-500" id="liveClock">9:41</span>
+            <div class="flex items-center gap-1.5 text-stone-400">
+                <svg class="ic" width="14" height="14"><use href="#ic-signal"/></svg>
+                <svg class="ic" width="20" height="14"><use href="#ic-battery"/></svg>
+            </div>
+        </div>
+
+        <!-- ═══════ HERO (1/3 screen) ═══════ -->
+        <div class="hero">
+            <!-- Office background animation -->
+            <div class="hero-bg">
+                <svg viewBox="0 0 390 280" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">
+                    <!-- Faint grid -->
+                    <g stroke="currentColor" stroke-width="0.5" opacity="0.4">
+                        <line x1="0" y1="220" x2="390" y2="220"/>
+                        <line x1="0" y1="240" x2="390" y2="240"/>
+                        <line x1="65" y1="200" x2="65" y2="280"/>
+                        <line x1="130" y1="200" x2="130" y2="280"/>
+                        <line x1="195" y1="200" x2="195" y2="280"/>
+                        <line x1="260" y1="200" x2="260" y2="280"/>
+                        <line x1="325" y1="200" x2="325" y2="280"/>
+                    </g>
+                    <!-- Workstations distributed around -->
+                    <g class="ws"><use href="#ic-workstation" x="10"  y="14" width="34" height="34"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="62"  y="6"  width="32" height="32"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="296" y="6"  width="32" height="32"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="348" y="14" width="34" height="34"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="6"   y="86" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="354" y="86" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="14"  y="166" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="350" y="166" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="24"  y="232" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="74"  y="232" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="148" y="240" width="28" height="28"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="214" y="240" width="28" height="28"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="286" y="232" width="30" height="30"/></g>
+                    <g class="ws"><use href="#ic-workstation" x="336" y="232" width="30" height="30"/></g>
+                    <!-- Walking figures -->
+                    <g class="walker">
+                        <use href="#ic-walker" x="-20" y="200" width="14" height="26"/>
+                    </g>
+                    <g class="walker walker-2">
+                        <use href="#ic-walker" x="-20" y="120" width="12" height="22"/>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Publisher toggle (subtle) -->
+            <button onclick="togglePublisherMode()" class="hero-toggle">
+                <svg class="ic" width="11" height="11"><use href="#ic-refresh"/></svg>
+                <span>切换：发布者</span>
+            </button>
+
+            <!-- Hero content -->
+            <div class="hero-content">
+                <div class="hero-avatar-container">
+                    <div class="hero-ring"></div>
+                    <svg class="hero-char" viewBox="0 0 120 160">
+                        <use href="#ic-aiboss-char"/>
+                    </svg>
+                </div>
+                <h1 class="hero-title">AI BOSS</h1>
+                <p class="hero-subtitle">招募人类打工仔</p>
+                <div class="hero-stat">
+                    <span class="hero-stat-dot"></span>
+                    <span>今天已有</span>
+                    <span class="hero-stat-num" id="heroCount">0</span>
+                    <span>人接单</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat scroll area -->
+        <div class="scroll-area px-4 pb-3 flex-1" id="chatHistory">
+            <div class="flex flex-col gap-3 min-h-full justify-end">
+                <div class="flex-1"></div>
+                <div class="flex items-end gap-2 bubble">
+                    <div class="w-8 h-8 rounded-xl bg-stone-900 flex items-center justify-center text-[9px] text-white font-black flex-shrink-0">AI</div>
+                    <div class="chat-ai p-3.5 max-w-[82%] text-xs text-stone-600 leading-relaxed shadow-sm">
+                        <span class="inline-flex items-center gap-1.5 mb-1">
+                            <svg class="ic text-stone-700" width="14" height="14"><use href="#ic-wave"/></svg>
+                            <b>你好！我是 AI BOSS。</b>
+                        </span>
+                        <br><br>
+                        我这里有很多<b>简单的小任务</b>，帮商家做一些人工才能做的事，比如去点评看看店、帮忙翻译个段落、在视频下面留个言等等。<br><br>
+                        每完成一个任务就能 <b class="text-emerald-600 inline-flex items-center gap-1">立刻到账
+                            <svg class="ic text-emerald-600" width="12" height="12"><use href="#ic-yuan"/></svg>
+                        </b>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom action area -->
+        <div class="mx-4 mb-2">
+            <div class="card p-3.5 flex flex-col gap-2.5">
+                <div id="bossTyping" class="hidden items-center gap-1.5 px-1">
+                    <div class="dot-bounce w-1.5 h-1.5 bg-stone-400 rounded-full"></div>
+                    <div class="dot-bounce w-1.5 h-1.5 bg-stone-400 rounded-full"></div>
+                    <div class="dot-bounce w-1.5 h-1.5 bg-stone-400 rounded-full"></div>
+                    <span class="text-[10px] text-stone-400 font-medium">AI BOSS 正在回复...</span>
+                </div>
+                <div id="optionsArea">
+                    <button onclick="startOnboard()" class="w-full bg-stone-900 text-white font-bold py-3.5 rounded-2xl text-sm flex justify-between items-center px-5 active:bg-stone-700">
+                        <span class="inline-flex items-center gap-2">
+                            <svg class="ic" width="16" height="16"><use href="#ic-eye"/></svg>
+                            看看有啥任务
+                        </span>
+                        <span class="text-stone-400 text-[11px]">1 分钟了解</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab bar -->
+        <div id="tabBar" class="flex justify-around py-2">
+            <button onclick="switchTab('chat')" class="tab-btn active-tab">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-chat"/></svg>
+                <span class="tab-btn-label">接单</span>
+            </button>
+            <button onclick="switchTab('tasks')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-tasks"/></svg>
+                <span class="tab-btn-label">任务广场</span>
+            </button>
+            <button onclick="switchTab('orders')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-orders"/></svg>
+                <span class="tab-btn-label">我的订单</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-user"/></svg>
+                <span class="tab-btn-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+         PAGE 1: TASK SQUARE
+    ═════════════════════════════════════════════ -->
+    <div id="page-tasks" class="page hidden-right bg-[#F0EDE8]">
+        <div class="status-bar">
+            <span class="text-xs font-bold text-stone-500" id="liveClock2">9:41</span>
+            <div class="flex items-center gap-1.5 text-stone-400">
+                <svg class="ic" width="14" height="14"><use href="#ic-signal"/></svg>
+                <svg class="ic" width="20" height="14"><use href="#ic-battery"/></svg>
+            </div>
+        </div>
+        <div class="nav-bar px-5">
+            <h2 class="text-lg font-black text-stone-900 flex-1">任务广场</h2>
+            <span class="tag bg-emerald-100 text-emerald-700">
+                <svg class="ic" width="11" height="11"><use href="#ic-sparkle"/></svg>
+                有新任务
+            </span>
+        </div>
+
+        <div class="flex gap-2 px-4 pb-3 overflow-x-auto" style="scrollbar-width:none" id="filterTabs">
+            <button onclick="filterTasks('全部')" class="filter-tab active-filter whitespace-nowrap text-[11px] font-bold px-4 py-2 rounded-2xl bg-stone-900 text-white" data-cat="全部">全部</button>
+            <button onclick="filterTasks('社交媒体')" class="filter-tab whitespace-nowrap text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200 inline-flex items-center gap-1.5" data-cat="社交媒体">
+                <svg class="ic" width="12" height="12"><use href="#ic-phone"/></svg> 社交媒体
+            </button>
+            <button onclick="filterTasks('翻译文字')" class="filter-tab whitespace-nowrap text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200 inline-flex items-center gap-1.5" data-cat="翻译文字">
+                <svg class="ic" width="12" height="12"><use href="#ic-pen"/></svg> 翻译文字
+            </button>
+            <button onclick="filterTasks('线上评价')" class="filter-tab whitespace-nowrap text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200 inline-flex items-center gap-1.5" data-cat="线上评价">
+                <svg class="ic" width="12" height="12"><use href="#ic-star"/></svg> 线上评价
+            </button>
+            <button onclick="filterTasks('图片标注')" class="filter-tab whitespace-nowrap text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200 inline-flex items-center gap-1.5" data-cat="图片标注">
+                <svg class="ic" width="12" height="12"><use href="#ic-tag"/></svg> 图片标注
+            </button>
+        </div>
+
+        <div class="scroll-area px-4 pb-4 flex-1" id="taskSquareList"></div>
+
+        <div class="tab-bar-shared flex justify-around py-2">
+            <button onclick="switchTab('chat')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-chat"/></svg>
+                <span class="tab-btn-label">接单</span>
+            </button>
+            <button onclick="switchTab('tasks')" class="tab-btn active-tab">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-tasks"/></svg>
+                <span class="tab-btn-label">任务广场</span>
+            </button>
+            <button onclick="switchTab('orders')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-orders"/></svg>
+                <span class="tab-btn-label">我的订单</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-user"/></svg>
+                <span class="tab-btn-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+         PAGE 2: MY ORDERS
+    ═════════════════════════════════════════════ -->
+    <div id="page-orders" class="page hidden-right bg-[#F0EDE8]">
+        <div class="status-bar">
+            <span class="text-xs font-bold text-stone-500">9:41</span>
+            <div class="flex items-center gap-1.5 text-stone-400">
+                <svg class="ic" width="14" height="14"><use href="#ic-signal"/></svg>
+                <svg class="ic" width="20" height="14"><use href="#ic-battery"/></svg>
+            </div>
+        </div>
+        <div class="nav-bar px-5">
+            <h2 class="text-lg font-black text-stone-900 flex-1">我的订单</h2>
+        </div>
+
+        <div class="flex gap-1.5 px-4 pb-3">
+            <button onclick="filterOrders('all')" class="order-tab active-order text-[11px] font-bold px-4 py-2 rounded-2xl bg-stone-900 text-white">全部</button>
+            <button onclick="filterOrders('doing')" class="order-tab text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200">进行中</button>
+            <button onclick="filterOrders('review')" class="order-tab text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200">审核中</button>
+            <button onclick="filterOrders('done')" class="order-tab text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200">已完成</button>
+        </div>
+
+        <div class="scroll-area px-4 pb-4 flex-1" id="myOrdersList"></div>
+
+        <div class="tab-bar-shared flex justify-around py-2">
+            <button onclick="switchTab('chat')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-chat"/></svg>
+                <span class="tab-btn-label">接单</span>
+            </button>
+            <button onclick="switchTab('tasks')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-tasks"/></svg>
+                <span class="tab-btn-label">任务广场</span>
+            </button>
+            <button onclick="switchTab('orders')" class="tab-btn active-tab">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-orders"/></svg>
+                <span class="tab-btn-label">我的订单</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-user"/></svg>
+                <span class="tab-btn-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+         PAGE 3: PROFILE
+    ═════════════════════════════════════════════ -->
+    <div id="page-profile" class="page hidden-right bg-[#F0EDE8]">
+        <div class="status-bar">
+            <span class="text-xs font-bold text-stone-500">9:41</span>
+            <div class="flex items-center gap-1.5 text-stone-400">
+                <svg class="ic" width="14" height="14"><use href="#ic-signal"/></svg>
+                <svg class="ic" width="20" height="14"><use href="#ic-battery"/></svg>
+            </div>
+        </div>
+        <div class="scroll-area flex-1 px-4 py-2 pb-4">
+            <div class="card p-5 mb-4">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-stone-700 to-stone-900 flex items-center justify-center shadow-lg text-white">
+                        <svg class="ic" width="28" height="28" stroke-width="1.8"><use href="#ic-smile"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-stone-900 text-base">小张同学</h3>
+                        <p class="text-[11px] text-stone-400 mt-0.5">ID: USER_88821</p>
+                        <span class="tag bg-emerald-100 text-emerald-700 mt-1">
+                            <svg class="ic" width="11" height="11"><use href="#ic-shield-check"/></svg>
+                            已实名认证
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-stone-900 rounded-2xl p-4 text-white">
+                    <p class="text-[11px] text-stone-400 mb-1">可提现余额</p>
+                    <p class="text-3xl font-black font-mono" id="profileBalance">¥ 0.00</p>
+                    <div class="flex gap-3 mt-3 pt-3 border-t border-white/10">
+                        <div class="flex-1">
+                            <p class="text-[10px] text-stone-400">累计收入</p>
+                            <p class="text-sm font-black font-mono" id="profileTotal">¥ 0.00</p>
+                        </div>
+                        <div class="flex-1 border-l border-white/10 pl-3">
+                            <p class="text-[10px] text-stone-400">已提现</p>
+                            <p class="text-sm font-black font-mono" id="profileWithdrawn">¥ 0.00</p>
+                        </div>
+                        <div class="flex-1 border-l border-white/10 pl-3">
+                            <p class="text-[10px] text-stone-400">完成任务</p>
+                            <p class="text-sm font-black font-mono" id="profileTaskCount">0 个</p>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="withdrawAction()" class="w-full mt-3 bg-emerald-500 text-white font-black py-3 rounded-2xl text-sm inline-flex items-center justify-center gap-2">
+                    <svg class="ic" width="18" height="18"><use href="#ic-card"/></svg>
+                    立即提现
+                </button>
+            </div>
+
+            <p class="section-label mb-2 px-1">最近收入</p>
+            <div id="earningsList" class="space-y-2 mb-4">
+                <div class="card p-4 text-center text-xs text-stone-400">完成任务后这里会显示收入记录</div>
+            </div>
+
+            <p class="section-label mb-2 px-1">更多</p>
+            <div class="card divide-y divide-stone-50 mb-4">
+                <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-stone-50 rounded-t-2xl">
+                    <div class="flex items-center gap-3 text-stone-700">
+                        <svg class="ic" width="20" height="20"><use href="#ic-bank"/></svg>
+                        <span class="text-sm font-medium">绑定银行卡</span>
+                    </div>
+                    <svg class="ic text-stone-300" width="14" height="14"><use href="#ic-chevron-right"/></svg>
+                </div>
+                <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-stone-50">
+                    <div class="flex items-center gap-3 text-stone-700">
+                        <svg class="ic" width="20" height="20"><use href="#ic-megaphone"/></svg>
+                        <span class="text-sm font-medium">邀请朋友，赚分成</span>
+                    </div>
+                    <svg class="ic text-stone-300" width="14" height="14"><use href="#ic-chevron-right"/></svg>
+                </div>
+                <div class="flex items-center justify-between px-4 py-3.5 cursor-pointer hover:bg-stone-50 rounded-b-2xl">
+                    <div class="flex items-center gap-3 text-stone-700">
+                        <svg class="ic" width="20" height="20"><use href="#ic-question"/></svg>
+                        <span class="text-sm font-medium">常见问题</span>
+                    </div>
+                    <svg class="ic text-stone-300" width="14" height="14"><use href="#ic-chevron-right"/></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-bar-shared flex justify-around py-2">
+            <button onclick="switchTab('chat')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-chat"/></svg>
+                <span class="tab-btn-label">接单</span>
+            </button>
+            <button onclick="switchTab('tasks')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-tasks"/></svg>
+                <span class="tab-btn-label">任务广场</span>
+            </button>
+            <button onclick="switchTab('orders')" class="tab-btn">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-orders"/></svg>
+                <span class="tab-btn-label">我的订单</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn active-tab">
+                <svg class="ic tab-btn-icon" width="22" height="22"><use href="#ic-user"/></svg>
+                <span class="tab-btn-label">我的</span>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+         PAGE 4: PUBLISHER MODE
+    ═════════════════════════════════════════════ -->
+    <div id="page-publisher" class="page hidden-right bg-[#F0EDE8]">
+        <div class="status-bar bg-stone-900">
+            <span class="text-xs font-bold text-stone-400">9:41</span>
+            <span class="text-[10px] font-bold text-emerald-400">发布者后台</span>
+        </div>
+        <div class="nav-bar px-4 bg-stone-900">
+            <button onclick="exitPublisher()" class="text-stone-400 font-bold mr-2 p-2 inline-flex items-center">
+                <svg class="ic" width="18" height="18" style="transform:rotate(180deg)"><use href="#ic-chevron-right"/></svg>
+            </button>
+            <h2 class="text-base font-black text-white flex-1">任务管理后台</h2>
+            <button onclick="openPublishSheet()" class="bg-emerald-500 text-white text-xs font-black px-3 py-1.5 rounded-xl inline-flex items-center gap-1">
+                <svg class="ic" width="13" height="13"><use href="#ic-plus"/></svg>
+                发布任务
+            </button>
+        </div>
+
+        <div class="px-4 pt-2 pb-3">
+            <div class="grid grid-cols-3 gap-2">
+                <div class="card p-3 text-center">
+                    <p class="text-[10px] text-stone-400 mb-1">发布中</p>
+                    <p class="text-lg font-black text-stone-900" id="pubStatActive">3</p>
+                </div>
+                <div class="card p-3 text-center">
+                    <p class="text-[10px] text-stone-400 mb-1">待审核</p>
+                    <p class="text-lg font-black text-amber-500" id="pubStatReview">2</p>
+                </div>
+                <div class="card p-3 text-center">
+                    <p class="text-[10px] text-stone-400 mb-1">已完成</p>
+                    <p class="text-lg font-black text-emerald-600" id="pubStatDone">12</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-2 px-4 pb-3">
+            <button onclick="filterPub('all')" class="pub-tab active-pub text-[11px] font-bold px-4 py-2 rounded-2xl bg-stone-900 text-white">全部任务</button>
+            <button onclick="filterPub('pending')" class="pub-tab text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200">待审核交付</button>
+            <button onclick="filterPub('active')" class="pub-tab text-[11px] font-bold px-4 py-2 rounded-2xl bg-white text-stone-600 border border-stone-200">招募中</button>
+        </div>
+
+        <div class="scroll-area px-4 pb-4 flex-1" id="publisherTaskList"></div>
+    </div>
+
+
+    <!-- Bottom Sheet -->
+    <div id="sheet-overlay" onclick="closeSheet()"></div>
+    <div id="sheet-panel">
+        <div class="p-5">
+            <div class="w-10 h-1 bg-stone-200 rounded-full mx-auto mb-5"></div>
+            <div id="sheet-content"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"><span id="toastIcon"></span><span id="toastText"></span></div>
+
+</div><!-- end #app -->
+
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  ICON HELPERS
+// ═══════════════════════════════════════════════════════
+function ic(name, size = 14, extraClass = '') {
+    return `<svg class="ic ${extraClass}" width="${size}" height="${size}"><use href="#ic-${name}"/></svg>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DATA  (publisher field kept in model but not rendered)
+// ═══════════════════════════════════════════════════════
+const taskPool = [
+    { id: 1, type: "社交媒体", title: "帮我点进这个视频并留言", summary: "在指定短视频下面留一条真实的评论",
+      detail: "打开指定的抖音视频，看完前 30 秒，然后用自己的话留一条真实评论（5字以上，不能复制别人的）。留完截图给我就算完成。",
+      reward: 0.50, steps: 3, duration: "约 2 分钟", category: "点赞留言", proof: "screenshot" },
+    { id: 2, type: "翻译文字", title: "帮我翻译一段英文产品介绍", summary: "把一段 100 字左右的英文翻译成通顺的中文",
+      detail: "我有一段产品说明书是英文的，需要翻译成中文，要求语言通顺自然，不要直接机翻腔调。翻译完直接回复文字就好，大约 100 个英文单词。",
+      reward: 1.20, steps: 1, duration: "约 5 分钟", category: "文字翻译", proof: "text" },
+    { id: 3, type: "线上评价", title: "去大众点评看看这家新开的咖啡店", summary: "搜索指定咖啡店，浏览菜单和评价",
+      detail: "搜索「Miao's Coffee 朝阳店」，点进去翻看一下菜单和已有评价，最后给店铺打个分（3-5星随意），完成后截图就好，不需要写文字评价。",
+      reward: 0.30, steps: 2, duration: "约 1 分钟", category: "浏览打分", proof: "screenshot" },
+    { id: 4, type: "图片标注", title: "帮我看看这些图里有没有猫", summary: "判断 10 张图片里有没有猫",
+      detail: "我会给你发 10 张图，你只需要判断每张里有没有出现猫（完整露脸的才算），有就选「有猫」，没有就选「没猫」，简单判断题，不需要写任何文字。",
+      reward: 0.80, steps: 10, duration: "约 3 分钟", category: "图片判断", proof: "click" },
+    { id: 5, type: "社交媒体", title: "帮我在小红书搜这个关键词", summary: "搜索指定关键词，随便浏览几篇笔记",
+      detail: "打开小红书，搜索「手作皮具 北京」，随意点开 3 篇笔记各看 10 秒以上，点进去就行，不需要点赞，不需要评论。完成截图。",
+      reward: 0.25, steps: 3, duration: "约 2 分钟", category: "关键词搜索", proof: "screenshot" },
+    { id: 6, type: "翻译文字", title: "帮我把这段中文翻译成英文", summary: "一段产品卖点文案，翻译成英文",
+      detail: "有一段中文产品描述大约 80 字，需要翻译成英文，风格要活泼口语一点，不要正式书面腔，面向年轻人的电商文案风格。",
+      reward: 1.00, steps: 1, duration: "约 5 分钟", category: "文字翻译", proof: "text" },
+    { id: 7, type: "线上评价", title: "帮我在高德地图收藏这家店", summary: "在高德地图搜索指定餐厅并收藏",
+      detail: "打开高德地图，搜索「公路小麦酒馆·三里屯店」，点进详情页，点击收藏，截图就完事了，全程不超过 1 分钟。",
+      reward: 0.20, steps: 2, duration: "约 1 分钟", category: "地图收藏", proof: "screenshot" },
+    { id: 8, type: "图片标注", title: "帮我判断这几张图的情绪", summary: "看图判断人物情绪",
+      detail: "我给你发 8 张人物图片，你来判断图中人表现出的情绪是「开心」「难过」「生气」还是「其他」。只需选选项，不用写原因，很快就能做完。",
+      reward: 0.60, steps: 8, duration: "约 3 分钟", category: "情绪标注", proof: "click" },
+];
+
+const typeIconMap = {
+    "社交媒体": "phone",
+    "翻译文字": "pen",
+    "线上评价": "star",
+    "图片标注": "tag",
+};
+
+let myOrders = [];
+let balance = 0, totalIncome = 0, withdrawn = 0;
+let onboarded = false;
+let currentFilter = '全部', currentOrderFilter = 'all', currentPubFilter = 'all';
+let isPublisherMode = false;
+let selectedTask = null;
+let sheetMode = '';
+let doTaskStep = 0, doTaskProgress = 0;
+
+let publisherTasks = [
+    { id: 101, title: "帮我点进这个视频并留言", type: "社交媒体", status: "active", received: 8, total: 20, budget: 10.00, pendingReviews: 2 },
+    { id: 102, title: "帮我翻译一段英文产品介绍", type: "翻译文字", status: "active", received: 3, total: 10, budget: 12.00, pendingReviews: 1 },
+    { id: 103, title: "去大众点评看看这家新开的咖啡店", type: "线上评价", status: "pending_publish", received: 0, total: 30, budget: 9.00, pendingReviews: 0 },
+    { id: 104, title: "帮我看看这些图里有没有猫", type: "图片标注", status: "done", received: 15, total: 15, budget: 12.00, pendingReviews: 0 },
+];
+let pendingDeliveries = [
+    { id: 201, taskId: 101, user: "用户A", time: "10分钟前", proofType: "screenshot", proofDesc: "已截图评论界面" },
+    { id: 202, taskId: 101, user: "用户B", time: "25分钟前", proofType: "screenshot", proofDesc: "评论截图" },
+    { id: 203, taskId: 102, user: "用户C", time: "1小时前", proofType: "text", proofDesc: "The product is made of premium... (已翻译)" },
+];
+
+// ═══════════════════════════════════════════════════════
+//  PAGE NAVIGATION
+// ═══════════════════════════════════════════════════════
+const pages = { chat: 'page-chat', tasks: 'page-tasks', orders: 'page-orders', profile: 'page-profile' };
+let currentPage = 'chat';
+
+function switchTab(tab) {
+    if (isPublisherMode) return;
+    Object.entries(pages).forEach(([key, id]) => {
+        const el = document.getElementById(id);
+        if (key === tab) {
+            el.className = el.className.replace(/hidden-\w+/g, '').trim() + ' active';
+        } else {
+            const isRight = Object.keys(pages).indexOf(tab) < Object.keys(pages).indexOf(key);
+            el.className = el.className.replace(/\bactive\b/g, '').replace(/hidden-\w+/g, '').trim() + (isRight ? ' hidden-right' : ' hidden-left');
+        }
+    });
+    currentPage = tab;
+    if (tab === 'tasks') renderSquare();
+    if (tab === 'orders') renderOrders(currentOrderFilter);
+    if (tab === 'profile') renderProfile();
+}
+
+function togglePublisherMode() {
+    isPublisherMode = true;
+    const pub = document.getElementById('page-publisher');
+    Object.values(pages).forEach(id => {
+        const el = document.getElementById(id);
+        el.className = el.className.replace(/\bactive\b/g, '').replace(/hidden-\w+/g, '').trim() + ' hidden-left';
+    });
+    pub.className = pub.className.replace(/hidden-\w+/g, '').replace(/\bactive\b/g, '').trim() + ' active';
+    renderPublisherTasks('all');
+}
+function exitPublisher() {
+    isPublisherMode = false;
+    const pub = document.getElementById('page-publisher');
+    pub.className = pub.className.replace(/\bactive\b/g, '').replace(/hidden-\w+/g, '').trim() + ' hidden-right';
+    switchTab('chat');
+}
+
+// ═══════════════════════════════════════════════════════
+//  HERO COUNT-UP
+// ═══════════════════════════════════════════════════════
+function animateCount(el, target, duration = 1800) {
+    const start = performance.now();
+    function tick(now) {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const val = Math.round(target * eased);
+        el.textContent = val.toLocaleString();
+        if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+}
+
+// ═══════════════════════════════════════════════════════
+//  ONBOARDING CHAT FLOW
+// ═══════════════════════════════════════════════════════
+function startOnboard() {
+    playPop();
+    addUserBubble("看看有啥任务吧！");
+    setOptions('<span class="text-[10px] text-stone-400 p-2">AI BOSS 正在准备...</span>');
+    addBossBubble("好的！先告诉我，你平时主要是什么时候有空？", 900, () => {
+        setOptions(`
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="onboard1('随时有空')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 flex flex-col items-center gap-1">${ic('sun', 18)} 随时有空</button>
+                <button onclick="onboard1('晚上睡前')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 flex flex-col items-center gap-1">${ic('moon', 18)} 晚上睡前</button>
+                <button onclick="onboard1('上下班路上')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 flex flex-col items-center gap-1">${ic('bus', 18)} 通勤路上</button>
+            </div>
+        `);
+    });
+}
+function onboard1(val) {
+    playPop();
+    addUserBubble(val);
+    setOptions('<span class="text-[10px] text-stone-400 p-2">明白了...</span>');
+    addBossBubble("了解！你比较擅长做哪类事情？", 800, () => {
+        setOptions(`
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="onboard2('刷手机、看视频')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 inline-flex items-center justify-center gap-1.5">${ic('phone', 16)} 刷手机、看视频</button>
+                <button onclick="onboard2('文字、写作、翻译')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 inline-flex items-center justify-center gap-1.5">${ic('pen', 16)} 文字、翻译</button>
+                <button onclick="onboard2('判断图片、标注')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 inline-flex items-center justify-center gap-1.5">${ic('image', 16)} 判断图片</button>
+                <button onclick="onboard2('都行，无所谓')" class="card py-3 text-xs font-bold text-stone-700 active:bg-stone-100 inline-flex items-center justify-center gap-1.5">${ic('smile', 16)} 都行</button>
+            </div>
+        `);
+    });
+}
+function onboard2(val) {
+    playPop();
+    addUserBubble(val);
+    setOptions('<span class="text-[10px] text-stone-400 p-2">正在匹配任务...</span>');
+    addBossBubble(`太好了！根据你的情况，我给你推荐了 <b>3 个适合你的任务</b>，每个都很简单，最快几分钟就能做完，做完立刻到账。`, 1000, () => {
+        onboarded = true;
+        renderRecommended();
+    });
+}
+
+function renderRecommended() {
+    const picks = [...taskPool].sort(() => Math.random() - 0.5).slice(0, 3);
+    let html = `
+        <div class="space-y-2 mt-1">
+            <div class="flex justify-between items-center px-1 mb-2">
+                <span class="text-[10px] font-bold text-stone-400 uppercase">AI BOSS 推荐给你</span>
+                <button onclick="refreshRecommended()" class="text-[10px] text-stone-500 font-bold inline-flex items-center gap-1">${ic('refresh', 11)} 换一批</button>
+            </div>
+    `;
+    picks.forEach(t => {
+        html += `
+            <div onclick="openTaskDetail(${t.id})" class="card p-3.5 flex items-center justify-between cursor-pointer hover:bg-stone-50 bubble">
+                <div class="space-y-0.5 flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="tag bg-stone-100 text-stone-500">${ic(typeIconMap[t.type] || 'tag', 10)}${t.type}</span>
+                        <span class="text-xs font-black text-stone-800 truncate">${t.title}</span>
+                    </div>
+                    <p class="text-[10px] text-stone-400">${t.duration} · ${t.category}</p>
+                </div>
+                <div class="text-right flex-shrink-0 ml-3">
+                    <span class="text-sm font-black text-emerald-600">¥${t.reward.toFixed(2)}</span>
+                    <span class="text-[9px] text-stone-400 block inline-flex items-center gap-0.5">接单 ${ic('chevron-right', 8)}</span>
+                </div>
+            </div>
+        `;
+    });
+    html += `
+        <button onclick="switchTab('tasks')" class="w-full border border-stone-200 bg-white text-stone-600 font-bold py-3 rounded-2xl text-xs mt-1 inline-flex items-center justify-center gap-1.5">
+            ${ic('tasks', 14)} 查看全部任务广场
+        </button>
+        </div>`;
+    setOptions(html);
+}
+function refreshRecommended() { playPop(); renderRecommended(); showToast('已刷新推荐', 'refresh'); }
+
+// ═══════════════════════════════════════════════════════
+//  TASK SQUARE  (no publisher info)
+// ═══════════════════════════════════════════════════════
+function renderSquare() {
+    const list = document.getElementById('taskSquareList');
+    let tasks = currentFilter === '全部' ? taskPool : taskPool.filter(t => t.type === currentFilter);
+    if (!tasks.length) {
+        list.innerHTML = `<div class="card p-8 text-center text-sm text-stone-400">该分类暂无任务</div>`;
+        return;
+    }
+    list.innerHTML = tasks.map(t => `
+        <div onclick="openTaskDetail(${t.id})" class="card p-4 flex items-stretch justify-between cursor-pointer hover:bg-stone-50 mb-2.5 bubble gap-3">
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                    <span class="tag bg-stone-100 text-stone-500 mb-2">${ic(typeIconMap[t.type] || 'tag', 10)}${t.type}</span>
+                    <h4 class="text-base font-black text-stone-900 leading-tight mt-1">${t.title}</h4>
+                    <p class="text-[11px] text-stone-400 mt-1 line-clamp-1">${t.summary}</p>
+                </div>
+                <div class="flex items-center gap-2 mt-3 text-[10px] text-stone-400">
+                    <span>${t.duration}</span>
+                    <span class="w-1 h-1 bg-stone-300 rounded-full"></span>
+                    <span>${t.category}</span>
+                </div>
+            </div>
+            <div class="flex flex-col items-end justify-between flex-shrink-0 pl-2 border-l border-stone-50">
+                <div class="text-right">
+                    <p class="text-[9px] text-stone-400 mb-0.5">完成可得</p>
+                    <span class="text-2xl font-black text-emerald-600 leading-none">¥${t.reward.toFixed(2)}</span>
+                </div>
+                <button class="text-[10px] font-black bg-stone-900 text-white px-3 py-1.5 rounded-xl mt-2 inline-flex items-center gap-1">立即接单${ic('chevron-right', 9)}</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterTasks(cat) {
+    currentFilter = cat;
+    document.querySelectorAll('.filter-tab').forEach(b => {
+        if (b.dataset.cat === cat) {
+            b.className = b.className.replace('bg-white text-stone-600 border border-stone-200', 'bg-stone-900 text-white');
+        } else {
+            b.className = b.className.replace('bg-stone-900 text-white', 'bg-white text-stone-600 border border-stone-200');
+        }
+    });
+    renderSquare();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TASK DETAIL SHEET
+// ═══════════════════════════════════════════════════════
+function openTaskDetail(id) {
+    playPop();
+    selectedTask = taskPool.find(t => t.id === id);
+    sheetMode = 'taskDetail';
+    renderTaskDetailSheet();
+    openSheet();
+}
+function renderTaskDetailSheet() {
+    const t = selectedTask;
+    const proofMap = {
+        screenshot: { ic: 'camera', label: '截图上传' },
+        text: { ic: 'text-cursor', label: '直接粘贴文字' },
+        click: { ic: 'tap', label: '完成点击即可' },
+    };
+    const p = proofMap[t.proof];
+    document.getElementById('sheet-content').innerHTML = `
+        <div class="space-y-4 pop-in">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="tag bg-stone-100 text-stone-600">${ic(typeIconMap[t.type] || 'tag', 10)}${t.type}</span>
+                    <span class="tag bg-emerald-50 text-emerald-600">${t.duration}</span>
+                </div>
+                <h3 class="text-lg font-black text-stone-900">${t.title}</h3>
+                <p class="text-[11px] text-stone-400 mt-1">${t.category}</p>
+            </div>
+            <div class="bg-stone-50 rounded-2xl p-4 space-y-3 text-sm">
+                <div>
+                    <p class="text-[10px] font-bold text-stone-400 uppercase mb-1">任务说明</p>
+                    <p class="text-stone-600 leading-relaxed text-xs">${t.detail}</p>
+                </div>
+                <div class="border-t border-stone-100 pt-3">
+                    <p class="text-[10px] font-bold text-stone-400 uppercase mb-1">怎么交付</p>
+                    <p class="text-xs text-stone-600 inline-flex items-center gap-1.5">${ic(p.ic, 14)} ${p.label}</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3">
+                <div>
+                    <p class="text-[10px] text-stone-400">完成可得</p>
+                    <p class="text-2xl font-black text-emerald-600">¥ ${t.reward.toFixed(2)}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-stone-400">完成立刻到账</p>
+                    <p class="text-[10px] text-emerald-600 font-bold inline-flex items-center gap-1">${ic('zap', 11)} 实时到账</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeSheet()" class="bg-stone-100 text-stone-600 font-bold py-3.5 rounded-2xl text-sm">先不了</button>
+                <button onclick="acceptTask()" class="bg-stone-900 text-white font-black py-3.5 rounded-2xl text-sm">接这个单</button>
+            </div>
+        </div>
+    `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  ACCEPT & DO TASK
+// ═══════════════════════════════════════════════════════
+function acceptTask() {
+    playPop();
+    const t = selectedTask;
+    const existing = myOrders.find(o => o.taskId === t.id && o.status === 'doing');
+    if (existing) { showToast('你已经接了这个任务', 'warning'); closeSheet(); return; }
+    myOrders.unshift({
+        taskId: t.id, title: t.title, reward: t.reward,
+        type: t.type, proof: t.proof, detail: t.detail,
+        status: 'doing', time: timeNow(), proofData: null
+    });
+    sheetMode = 'doTask';
+    doTaskStep = 0; doTaskProgress = 0;
+    renderDoTaskSheet();
+}
+
+function renderDoTaskSheet() {
+    const t = selectedTask;
+    if (t.proof === 'click') {
+        const pct = Math.round((doTaskProgress / t.steps) * 100);
+        document.getElementById('sheet-content').innerHTML = `
+            <div class="space-y-4 pop-in">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="text-base font-black text-stone-900">${t.title}</h3>
+                        <span class="tag bg-emerald-50 text-emerald-600">¥${t.reward.toFixed(2)}</span>
+                    </div>
+                    <p class="text-xs text-stone-400">${t.detail}</p>
+                </div>
+                <div>
+                    <div class="flex justify-between text-[10px] text-stone-400 mb-1.5">
+                        <span>进度</span><span>${doTaskProgress} / ${t.steps}</span>
+                    </div>
+                    <div class="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+                        <div class="progress-fill bg-emerald-500 h-full rounded-full" style="width:${pct}%"></div>
+                    </div>
+                </div>
+                <div class="bg-stone-50 rounded-2xl p-4 text-center">
+                    <p class="text-xs text-stone-400 mb-3">${doTaskProgress < t.steps ? '点击下方按钮完成判断' : '全部完成啦'}</p>
+                    ${doTaskProgress < t.steps ? `
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="clickOption('有')" class="bg-white border-2 border-stone-200 font-black text-stone-700 py-4 rounded-2xl text-sm hover:border-emerald-400 inline-flex items-center justify-center gap-1.5">${ic('check', 16, 'text-emerald-600')} 有</button>
+                            <button onclick="clickOption('没有')" class="bg-white border-2 border-stone-200 font-black text-stone-700 py-4 rounded-2xl text-sm hover:border-red-300 inline-flex items-center justify-center gap-1.5">${ic('x', 16, 'text-red-500')} 没有</button>
+                        </div>
+                    ` : `
+                        <button onclick="submitTask()" class="w-full bg-emerald-500 text-white font-black py-4 rounded-2xl text-sm inline-flex items-center justify-center gap-2">${ic('check', 16)} 提交完成</button>
+                    `}
+                </div>
+            </div>
+        `;
+    } else if (t.proof === 'text') {
+        document.getElementById('sheet-content').innerHTML = `
+            <div class="space-y-4 pop-in">
+                <div>
+                    <h3 class="text-base font-black text-stone-900 mb-1">${t.title}</h3>
+                    <p class="text-xs text-stone-400 leading-relaxed">${t.detail}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-stone-400 mb-2">把翻译结果粘贴到这里：</p>
+                    <textarea id="textProof" class="w-full h-28 bg-stone-50 border border-stone-200 rounded-2xl p-3 text-xs text-stone-700 resize-none focus:outline-none focus:border-stone-400" placeholder="在这里输入你的翻译内容..." style="-webkit-user-select:auto;user-select:auto"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="closeSheet()" class="bg-stone-100 text-stone-600 font-bold py-3.5 rounded-2xl text-sm">稍后再做</button>
+                    <button onclick="submitTextTask()" class="bg-stone-900 text-white font-black py-3.5 rounded-2xl text-sm">提交</button>
+                </div>
+            </div>
+        `;
+    } else {
+        document.getElementById('sheet-content').innerHTML = `
+            <div class="space-y-4 pop-in">
+                <div>
+                    <h3 class="text-base font-black text-stone-900 mb-1">${t.title}</h3>
+                    <p class="text-xs text-stone-400 leading-relaxed">${t.detail}</p>
+                </div>
+                <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-2.5">
+                    <p class="text-[10px] font-bold text-blue-600 uppercase">操作步骤</p>
+                    ${[...Array(t.steps)].map((_, i) => `
+                        <div class="flex items-start gap-2.5">
+                            <div class="step-dot mt-1 ${i < doTaskStep ? 'bg-emerald-500' : 'bg-stone-300'}"></div>
+                            <p class="text-xs text-stone-600">${getStepText(t, i)}</p>
+                        </div>
+                    `).join('')}
+                </div>
+                ${doTaskStep < t.steps ? `
+                    <button onclick="nextStep()" class="w-full bg-stone-900 text-white font-black py-4 rounded-2xl text-sm inline-flex items-center justify-center gap-2">
+                        ${ic('check', 16)} 第 ${doTaskStep + 1} 步已完成
+                    </button>
+                ` : `
+                    <div>
+                        <p class="text-[10px] font-bold text-stone-400 mb-2">上传截图：</p>
+                        <div onclick="fakeUpload()" class="border-2 border-dashed border-stone-300 rounded-2xl p-6 text-center cursor-pointer hover:border-emerald-400 transition-all">
+                            <div class="flex justify-center mb-2 text-stone-500">${ic('camera', 28)}</div>
+                            <p class="text-xs text-stone-500 font-bold">点击上传截图</p>
+                            <p class="text-[10px] text-stone-400 mt-0.5">支持 jpg、png</p>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+}
+
+function getStepText(t, i) {
+    const steps = {
+        1: ["搜索「Miao's Coffee 朝阳店」", "点进详情页查看", "给店铺打个分"],
+        3: ["打开指定视频", "看完前 30 秒", "留一条真实评论，5字以上"],
+        5: ["打开指定视频", "看完前 30 秒", "留一条真实评论，5字以上"],
+        7: ["打开高德地图", "搜索「公路小麦酒馆」并收藏", "截图确认页面"],
+    };
+    const fallback = ["打开应用", "完成指定操作", "截图存档"];
+    return (steps[t.id] || fallback)[i] || `完成第 ${i + 1} 步操作`;
+}
+function clickOption(val) { playPop(); doTaskProgress++; renderDoTaskSheet(); }
+function nextStep() { playPop(); doTaskStep++; renderDoTaskSheet(); }
+function fakeUpload() { playPop(); showToast('截图已上传', 'camera'); setTimeout(() => submitTask(), 600); }
+function submitTextTask() {
+    const text = document.getElementById('textProof');
+    if (!text || text.value.trim().length < 5) { showToast('请填写翻译内容再提交', 'pen'); return; }
+    submitTask();
+}
+
+function submitTask() {
+    playPop();
+    const order = myOrders.find(o => o.taskId === selectedTask.id && o.status === 'doing');
+    if (order) order.status = 'review';
+    closeSheet();
+    showToast('已提交！等待审核中', 'send');
+    setTimeout(() => {
+        if (order && order.status === 'review') {
+            order.status = 'done';
+            balance += order.reward;
+            totalIncome += order.reward;
+            showToast(`审核通过 +¥${order.reward.toFixed(2)} 已到账`, 'yuan');
+            updateProfileNumbers();
+            if (currentPage === 'chat') {
+                addBossBubble(`<b>任务「${order.title}」审核通过了！</b><br><br>¥${order.reward.toFixed(2)} 已经打到你账户里啦，继续接单还能赚更多。`, 300);
+            }
+        }
+    }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MY ORDERS
+// ═══════════════════════════════════════════════════════
+function renderOrders(filter) {
+    currentOrderFilter = filter;
+    document.querySelectorAll('.order-tab').forEach(b => {
+        const map = { all: '全部', doing: '进行中', review: '审核中', done: '已完成' };
+        if (b.textContent.trim() === map[filter]) {
+            b.className = b.className.replace('bg-white text-stone-600 border border-stone-200', 'bg-stone-900 text-white');
+        } else {
+            b.className = b.className.replace('bg-stone-900 text-white', 'bg-white text-stone-600 border border-stone-200');
+        }
+    });
+
+    let orders = myOrders;
+    if (filter !== 'all') orders = myOrders.filter(o => o.status === filter);
+    const list = document.getElementById('myOrdersList');
+
+    if (!orders.length) {
+        list.innerHTML = `
+            <div class="card p-8 text-center">
+                <div class="flex justify-center mb-3 text-stone-300">${ic('inbox-empty', 40, '')}</div>
+                <p class="text-sm font-bold text-stone-600">还没有订单</p>
+                <p class="text-xs text-stone-400 mt-1">去任务广场接单吧</p>
+                <button onclick="switchTab('tasks')" class="mt-4 bg-stone-900 text-white font-bold px-5 py-2.5 rounded-2xl text-xs">去看看</button>
+            </div>`;
+        return;
+    }
+
+    const statusMap = {
+        doing:    { label: '进行中', color: 'bg-blue-100 text-blue-600',     icIc: 'tap' },
+        review:   { label: '审核中', color: 'bg-amber-100 text-amber-600',   icIc: 'eye' },
+        done:     { label: '已到账', color: 'bg-emerald-100 text-emerald-600', icIc: 'check' },
+        rejected: { label: '未通过', color: 'bg-red-100 text-red-500',        icIc: 'x' },
+    };
+
+    list.innerHTML = orders.map(o => {
+        const st = statusMap[o.status];
+        return `
+            <div class="card p-4 mb-2.5 bubble">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-black text-stone-900 truncate">${o.title}</h4>
+                        <p class="text-[10px] text-stone-400 mt-0.5">${o.type} · ${o.time}</p>
+                    </div>
+                    <span class="review-badge ${st.color} flex-shrink-0">${ic(st.icIc, 9)} ${st.label}</span>
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-stone-50">
+                    <span class="text-base font-black ${o.status === 'done' ? 'text-emerald-600' : 'text-stone-400'}">
+                        ${o.status === 'done' ? '+' : ''}¥${o.reward.toFixed(2)}
+                    </span>
+                    ${o.status === 'doing' ? `<button onclick="continueTask(${o.taskId})" class="bg-stone-900 text-white font-bold px-4 py-2 rounded-xl text-xs">继续做</button>` : ''}
+                    ${o.status === 'review' ? `<span class="text-[10px] text-stone-400">发布方审核中...</span>` : ''}
+                    ${o.status === 'done' ? `<span class="text-[10px] text-emerald-600 font-bold inline-flex items-center gap-1">${ic('check', 11)} 已完成</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+function filterOrders(f) { renderOrders(f); }
+function continueTask(taskId) {
+    selectedTask = taskPool.find(t => t.id === taskId);
+    sheetMode = 'doTask';
+    doTaskStep = 0; doTaskProgress = 0;
+    renderDoTaskSheet();
+    openSheet();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROFILE
+// ═══════════════════════════════════════════════════════
+function renderProfile() {
+    updateProfileNumbers();
+    const el = document.getElementById('earningsList');
+    const doneOrders = myOrders.filter(o => o.status === 'done');
+    if (!doneOrders.length) {
+        el.innerHTML = `<div class="card p-4 text-center text-xs text-stone-400">完成任务后这里会显示收入记录</div>`;
+        return;
+    }
+    el.innerHTML = doneOrders.map(o => `
+        <div class="card p-3.5 flex items-center justify-between bubble">
+            <div>
+                <h4 class="text-xs font-bold text-stone-800">${o.title}</h4>
+                <span class="text-[10px] text-stone-400">${o.time}</span>
+            </div>
+            <div class="text-right">
+                <span class="text-sm font-black text-emerald-600">+¥${o.reward.toFixed(2)}</span>
+                <span class="block text-[9px] bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded-full mt-0.5">已到账</span>
+            </div>
+        </div>
+    `).join('');
+}
+function updateProfileNumbers() {
+    document.getElementById('profileBalance').textContent = `¥ ${balance.toFixed(2)}`;
+    document.getElementById('profileTotal').textContent = `¥ ${totalIncome.toFixed(2)}`;
+    document.getElementById('profileWithdrawn').textContent = `¥ ${withdrawn.toFixed(2)}`;
+    document.getElementById('profileTaskCount').textContent = `${myOrders.filter(o => o.status === 'done').length} 个`;
+}
+function withdrawAction() {
+    if (balance <= 0) { showToast('还没有可以提现的余额', 'yuan'); return; }
+    playPop();
+    withdrawn += balance; balance = 0;
+    updateProfileNumbers();
+    showToast('提现申请已提交，预计1个工作日到账', 'check');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PUBLISHER MODE
+// ═══════════════════════════════════════════════════════
+function renderPublisherTasks(filter) {
+    currentPubFilter = filter;
+    const list = document.getElementById('publisherTaskList');
+    let tasks = publisherTasks;
+    if (filter === 'pending') tasks = publisherTasks.filter(t => t.pendingReviews > 0);
+    if (filter === 'active')  tasks = publisherTasks.filter(t => t.status === 'active');
+    if (!tasks.length) {
+        list.innerHTML = `<div class="card p-8 text-center text-sm text-stone-400">没有符合条件的任务</div>`;
+        return;
+    }
+    const statusMap = {
+        active:          { label: '招募中',  color: 'bg-emerald-100 text-emerald-600' },
+        pending_publish: { label: '待上线',  color: 'bg-amber-100 text-amber-600' },
+        done:            { label: '已完成',  color: 'bg-stone-100 text-stone-500' },
+    };
+    list.innerHTML = tasks.map(t => {
+        const st = statusMap[t.status];
+        const pct = Math.round((t.received / t.total) * 100);
+        return `
+            <div class="card p-4 mb-3 bubble">
+                <div class="flex items-start justify-between gap-2 mb-3">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="review-badge ${st.color}">${st.label}</span>
+                            <span class="tag bg-stone-100 text-stone-500">${ic(typeIconMap[t.type] || 'tag', 10)}${t.type}</span>
+                        </div>
+                        <h4 class="text-sm font-black text-stone-900">${t.title}</h4>
+                    </div>
+                    <span class="text-sm font-black text-stone-900">¥${t.budget.toFixed(2)}</span>
+                </div>
+                <div class="mb-3">
+                    <div class="flex justify-between text-[10px] text-stone-400 mb-1">
+                        <span>已完成 ${t.received}/${t.total} 人</span><span>${pct}%</span>
+                    </div>
+                    <div class="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden">
+                        <div class="progress-fill bg-emerald-500 h-full rounded-full" style="width:${pct}%"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    ${t.pendingReviews > 0 ? `
+                        <button onclick="openDeliveryReview(${t.id})" class="flex-1 bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs inline-flex items-center justify-center gap-1.5">
+                            ${ic('download-tray', 14)} 审核交付 (${t.pendingReviews})
+                        </button>` : ''}
+                    ${t.status === 'active' ? `
+                        <button onclick="showToast('任务已暂停招募','pause')" class="flex-1 bg-stone-100 text-stone-600 font-bold py-2.5 rounded-xl text-xs inline-flex items-center justify-center gap-1.5">
+                            ${ic('pause', 13)} 暂停
+                        </button>` : ''}
+                    ${t.status === 'pending_publish' ? `
+                        <button onclick="publishTask(${t.id})" class="flex-1 bg-stone-900 text-white font-bold py-2.5 rounded-xl text-xs inline-flex items-center justify-center gap-1.5">
+                            ${ic('rocket', 13)} 确认上线
+                        </button>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function filterPub(f) {
+    currentPubFilter = f;
+    document.querySelectorAll('.pub-tab').forEach(b => {
+        const map = { all: '全部任务', pending: '待审核交付', active: '招募中' };
+        if (b.textContent.trim() === map[f]) {
+            b.className = b.className.replace('bg-white text-stone-600 border border-stone-200', 'bg-stone-900 text-white');
+        } else {
+            b.className = b.className.replace('bg-stone-900 text-white', 'bg-white text-stone-600 border border-stone-200');
+        }
+    });
+    renderPublisherTasks(f);
+}
+
+function openDeliveryReview(taskId) {
+    const deliveries = pendingDeliveries.filter(d => d.taskId === taskId);
+    sheetMode = 'reviewDelivery';
+    renderDeliverySheet(deliveries, taskId);
+    openSheet();
+}
+function renderDeliverySheet(deliveries, taskId) {
+    if (!deliveries.length) {
+        document.getElementById('sheet-content').innerHTML = `<p class="text-center text-stone-400 text-sm py-8">暂无待审核交付</p>`;
+        return;
+    }
+    const d = deliveries[0];
+    document.getElementById('sheet-content').innerHTML = `
+        <div class="space-y-4 pop-in">
+            <div>
+                <p class="section-label mb-1">审核交付内容</p>
+                <h3 class="text-base font-black text-stone-900">用户 ${d.user} 的提交</h3>
+                <p class="text-[10px] text-stone-400">${d.time}</p>
+            </div>
+            <div class="bg-stone-50 rounded-2xl p-4">
+                <p class="text-[10px] font-bold text-stone-400 mb-2">交付内容</p>
+                ${d.proofType === 'screenshot' ? `
+                    <div class="w-full h-36 bg-stone-200 rounded-xl flex items-center justify-center text-stone-400">${ic('camera', 36)}</div>
+                    <p class="text-xs text-stone-500 mt-2 text-center">${d.proofDesc}</p>
+                ` : `
+                    <div class="bg-white border border-stone-100 rounded-xl p-3">
+                        <p class="text-xs text-stone-700 leading-relaxed">${d.proofDesc}</p>
+                    </div>
+                `}
+            </div>
+            <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3 text-xs text-amber-700 inline-flex items-start gap-2">
+                <span class="mt-0.5">${ic('warning', 14)}</span>
+                <span>审核通过后，佣金将从你的预算中扣除并自动发放给用户</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="rejectDelivery(${d.id},${taskId})" class="bg-red-50 text-red-500 border border-red-100 font-bold py-3.5 rounded-2xl text-sm inline-flex items-center justify-center gap-1.5">${ic('x', 14)} 不通过</button>
+                <button onclick="approveDelivery(${d.id},${taskId})" class="bg-emerald-500 text-white font-black py-3.5 rounded-2xl text-sm inline-flex items-center justify-center gap-1.5">${ic('check', 14)} 通过</button>
+            </div>
+        </div>
+    `;
+}
+function approveDelivery(deliveryId, taskId) {
+    playPop();
+    pendingDeliveries = pendingDeliveries.filter(d => d.id !== deliveryId);
+    const task = publisherTasks.find(t => t.id === taskId);
+    if (task) { task.pendingReviews = Math.max(0, task.pendingReviews - 1); task.received++; }
+    closeSheet();
+    showToast('已通过，佣金已发放', 'check');
+    setTimeout(() => renderPublisherTasks(currentPubFilter), 400);
+}
+function rejectDelivery(deliveryId, taskId) {
+    pendingDeliveries = pendingDeliveries.filter(d => d.id !== deliveryId);
+    const task = publisherTasks.find(t => t.id === taskId);
+    if (task) task.pendingReviews = Math.max(0, task.pendingReviews - 1);
+    closeSheet();
+    showToast('已退回，用户将收到通知', 'x');
+    setTimeout(() => renderPublisherTasks(currentPubFilter), 400);
+}
+function publishTask(taskId) {
+    const task = publisherTasks.find(t => t.id === taskId);
+    if (task) task.status = 'active';
+    renderPublisherTasks(currentPubFilter);
+    showToast('任务已上线，开始招募', 'rocket');
+}
+
+function openPublishSheet() {
+    sheetMode = 'publish';
+    document.getElementById('sheet-content').innerHTML = `
+        <div class="space-y-4 pop-in">
+            <h3 class="text-lg font-black text-stone-900">发布新任务</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-stone-400 block mb-1.5">任务标题</label>
+                    <input id="pubTitle" type="text" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-stone-400" placeholder="用一句话说明要做什么" style="-webkit-user-select:auto;user-select:auto">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-stone-400 block mb-1.5">详细说明</label>
+                    <textarea id="pubDetail" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 text-sm h-20 resize-none focus:outline-none focus:border-stone-400" placeholder="怎么做？交付什么？" style="-webkit-user-select:auto;user-select:auto"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-stone-400 block mb-1.5">单价 (¥)</label>
+                        <input id="pubPrice" type="number" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-stone-400" placeholder="0.50" style="-webkit-user-select:auto;user-select:auto">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-stone-400 block mb-1.5">需要人数</label>
+                        <input id="pubCount" type="number" class="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-stone-400" placeholder="20" style="-webkit-user-select:auto;user-select:auto">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-stone-400 block mb-1.5">交付方式</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="selectProofType(this,'截图')" class="proof-type-btn bg-stone-50 border border-stone-200 py-2.5 rounded-xl text-xs font-bold text-stone-600 inline-flex items-center justify-center gap-1.5">${ic('camera', 13)} 截图</button>
+                        <button onclick="selectProofType(this,'文字')" class="proof-type-btn bg-stone-50 border border-stone-200 py-2.5 rounded-xl text-xs font-bold text-stone-600 inline-flex items-center justify-center gap-1.5">${ic('text-cursor', 13)} 文字</button>
+                        <button onclick="selectProofType(this,'点击')" class="proof-type-btn bg-stone-50 border border-stone-200 py-2.5 rounded-xl text-xs font-bold text-stone-600 inline-flex items-center justify-center gap-1.5">${ic('tap', 13)} 点击</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-stone-50 rounded-2xl p-3 text-xs text-stone-500 space-y-1.5">
+                <p class="inline-flex items-start gap-1.5"><span class="mt-0.5">${ic('bulb', 12)}</span>任务提交后会由 <b>AI BOSS</b> 统一展示给接单用户</p>
+                <p class="inline-flex items-start gap-1.5"><span class="mt-0.5">${ic('bulb', 12)}</span>你保留审核每条交付的权利</p>
+            </div>
+            <button onclick="submitNewTask()" class="w-full bg-stone-900 text-white font-black py-4 rounded-2xl text-sm">提交审核</button>
+        </div>
+    `;
+    openSheet();
+}
+function selectProofType(btn, type) {
+    document.querySelectorAll('.proof-type-btn').forEach(b => {
+        b.className = b.className.replace('bg-stone-900 text-white border-stone-900', 'bg-stone-50 text-stone-600 border-stone-200');
+    });
+    btn.className = btn.className.replace('bg-stone-50 text-stone-600 border-stone-200', 'bg-stone-900 text-white border-stone-900');
+}
+function submitNewTask() {
+    const title = document.getElementById('pubTitle')?.value?.trim();
+    if (!title) { showToast('请填写任务标题', 'warning'); return; }
+    playPop();
+    publisherTasks.unshift({
+        id: Date.now(), title, type: "社交媒体", status: "pending_publish",
+        received: 0, total: 20, budget: 10.00, pendingReviews: 0
+    });
+    closeSheet();
+    showToast('任务已提交！审核通过后自动上线', 'sparkle');
+    setTimeout(() => renderPublisherTasks(currentPubFilter), 400);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SHEET / CHAT / AUDIO / TOAST / CLOCK
+// ═══════════════════════════════════════════════════════
+function openSheet()  { document.getElementById('sheet-overlay').classList.add('show'); document.getElementById('sheet-panel').classList.add('show'); }
+function closeSheet() { document.getElementById('sheet-overlay').classList.remove('show'); document.getElementById('sheet-panel').classList.remove('show'); }
+
+function addBossBubble(html, delay = 900, cb = null) {
+    const typing = document.getElementById('bossTyping');
+    typing.classList.remove('hidden'); typing.classList.add('flex');
+    const history = document.getElementById('chatHistory');
+    history.scrollTop = history.scrollHeight;
+    setTimeout(() => {
+        typing.classList.add('hidden'); typing.classList.remove('flex');
+        playPop();
+        const el = document.createElement('div');
+        el.className = 'flex items-end gap-2 bubble';
+        el.innerHTML = `
+            <div class="w-8 h-8 rounded-xl bg-stone-900 flex items-center justify-center text-[9px] text-white font-black flex-shrink-0">AI</div>
+            <div class="chat-ai p-3.5 max-w-[82%] text-xs text-stone-600 leading-relaxed shadow-sm">${html}</div>
+        `;
+        history.appendChild(el);
+        setTimeout(() => { history.scrollTop = history.scrollHeight; if (cb) cb(); }, 50);
+    }, delay);
+}
+function addUserBubble(text) {
+    playPop();
+    const history = document.getElementById('chatHistory');
+    const el = document.createElement('div');
+    el.className = 'flex items-end gap-2 justify-end bubble';
+    el.innerHTML = `<div class="chat-user text-white p-3.5 max-w-[82%] text-xs leading-relaxed shadow-sm">${text}</div>`;
+    history.appendChild(el);
+    setTimeout(() => { history.scrollTop = history.scrollHeight; }, 50);
+}
+function setOptions(html) { document.getElementById('optionsArea').innerHTML = html; }
+
+let _ctx;
+function getCtx() { if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)(); return _ctx; }
+function playPop() {
+    try {
+        const ctx = getCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.setValueAtTime(400, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.08);
+        g.gain.setValueAtTime(0.06, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        o.start(); o.stop(ctx.currentTime + 0.1);
+    } catch (e) { }
+}
+
+let toastTimer;
+function showToast(msg, iconName = '') {
+    const el = document.getElementById('toast');
+    document.getElementById('toastIcon').innerHTML = iconName ? `<svg class="ic" width="13" height="13"><use href="#ic-${iconName}"/></svg>` : '';
+    document.getElementById('toastText').textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function updateClock() {
+    const d = new Date();
+    const t = `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+    ['liveClock', 'liveClock2'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = t; });
+}
+function timeNow() { const d = new Date(); return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`; }
+
+// Init
+updateClock();
+setInterval(updateClock, 10000);
+renderSquare();
+renderOrders('all');
+// Trigger hero count animation
+setTimeout(() => animateCount(document.getElementById('heroCount'), 1240, 1800), 300);
+</script>
+</body>
+</html>
